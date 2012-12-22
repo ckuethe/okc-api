@@ -1,12 +1,11 @@
-import urllib, urllib2, httplib
+import urllib, urllib2
 from datetime import datetime
-from BeautifulSoup import BeautifulSoup, NavigableString
+from BeautifulSoup import BeautifulSoup
 
 class okc_api:
   base_url = 'https://www.okcupid.com'
 
   def __init__(self, username, password):
-    self.username = username
     opener = urllib2.build_opener(urllib2.HTTPCookieProcessor())
     urllib2.install_opener(opener)
     params = urllib.urlencode(dict(username=username, password=password))
