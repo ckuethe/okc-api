@@ -68,7 +68,8 @@ class okc_api:
     return self.__soupify(f)
 
   def __strip(self, string):
-    return str(string).lstrip().rstrip()
+    string = str(string).replace('\xe2\x80\x99', '\'')
+    return string.lstrip().rstrip()
 
   def __find(self, soup, attribute, key, mapping = {}):
     details = self.__strip(soup.find(attribute, {'id': key}).contents[0])
@@ -86,9 +87,7 @@ class okc_api:
     """given a profile_detail soup, returns the ajax_(key) using replace on the mappings"""
     return self.__find(soup, 'dd', key, mapping)
 
-  def get_profile(self, username):
-    profile = {}
-    soup = self.__read_profile(username)
+  def __get_info(self, soup):
     userinfo = soup.find('div', {'class': 'userinfo'})
     if userinfo == None:
       age = self.__parse_my_details(soup, 'ajax_age')
@@ -104,8 +103,9 @@ class okc_api:
       status = self.__strip(info[3])
       location = self.__strip(info[4])
     info = {'age': age, 'gender': gender, 'orientation': orientation, 'status': status, 'location': location}
-    profile['info'] = info
+    return info
 
+  def __get_details(self, soup):
     details = soup.find('div', {'id': 'skinny_wrap'})
     profile_details = details.find('div', {'id': 'profile_details'})
     online = str(profile_details.find('dl').find('dd').contents[0].lstrip().rstrip())
@@ -130,7 +130,27 @@ class okc_api:
     profile_details = {'ethnicity': ethnicity, 'height': height, 'body_type': body_type, 'diet': diet, 'smokes': smokes,
                        'drinks': drinks, 'drugs': drugs, 'religion': religion, 'education': education, 'job': job,
                        'income': income, 'children': children, 'pets': pets, 'languages': languages}
-    profile['profile_details'] = profile_details
+    return profile_details
+
+  def __get_essays(self, soup):
+    essays = {}
+    for i in range(1,10):
+      essay = soup.find('div', {'id': 'essay_' + str(i)})
+      if essay != None:
+        title = self.__strip(essay.find('a', {'class': 'essay_title'}).contents[0])
+        body = self.__strip(essay.find('div', {'id': 'essay_text_' + str(i)}).contents[0])
+        essays[title] = body
+    return essays
+
+  def get_profile(self, username):
+    profile = {}
+    soup = self.__read_profile(username)
+    info = self.__get_info(soup)
+    details = self.__get_details(soup)
+    essays = self.__get_essays(soup)
+    profile['profile_info'] = info
+    profile['profile_details'] = details
+    profile['profile_essays'] = essays
     print profile
 
   def __read_compose(self):
