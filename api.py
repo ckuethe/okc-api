@@ -134,7 +134,10 @@ class okc_api:
 
   def __get_percentages(self, soup):
     percentages = soup.find('div', {'id': 'percentages'})
-    print percentages
+    match = self.__strip(percentages.find('span', {'class': 'match'}).contents[0].split('% ')[0])
+    friend = self.__strip(percentages.find('span', {'class': 'friend'}).contents[0].split('% ')[0])
+    enemy = self.__strip(percentages.find('span', {'class': 'enemy'}).contents[0].split('% ')[0])
+    return {'match': match, 'friend': friend, 'enemy': enemy}
 
   def __get_essays(self, soup):
     essays = {}
@@ -153,10 +156,10 @@ class okc_api:
     details = self.__get_details(soup)
     essays = self.__get_essays(soup)
     percentages = self.__get_percentages(soup)
-    profile['profile_info'] = info
-    profile['profile_details'] = details
-    profile['profile_essays'] = essays
-    profile['profile_percentages'] = percentages
+    profile['info'] = info
+    profile['details'] = details
+    profile['essays'] = essays
+    profile['percentages'] = percentages
     return profile
 
   def __read_compose(self):
