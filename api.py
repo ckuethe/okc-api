@@ -132,6 +132,10 @@ class okc_api:
                        'income': income, 'children': children, 'pets': pets, 'languages': languages}
     return profile_details
 
+  def __get_percentages(self, soup):
+    percentages = soup.find('div', {'id': 'percentages'})
+    print percentages
+
   def __get_essays(self, soup):
     essays = {}
     for i in range(1,10):
@@ -148,10 +152,12 @@ class okc_api:
     info = self.__get_info(soup)
     details = self.__get_details(soup)
     essays = self.__get_essays(soup)
+    percentages = self.__get_percentages(soup)
     profile['profile_info'] = info
     profile['profile_details'] = details
     profile['profile_essays'] = essays
-    print profile
+    profile['profile_percentages'] = percentages
+    return profile
 
   def __read_compose(self):
     f = self.__request_read(self.base_url + '/messages?compose=1')
