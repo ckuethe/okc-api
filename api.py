@@ -16,13 +16,19 @@ class okc_api:
   def __request_read(self, url):
     return urllib2.urlopen(url).read()
 
+  def __soupify(self, page):
+    m = {'&gt;': '>', '&lt;': '<'}
+    for k in m:
+      page = page.replace(k, m[k])
+    return BeautifulSoup(page)
+
   def __read_messages(self, index, page):
     f = self.__request_read(self.base_url + '/messages?folder=' + str(index) + '&low=' + str(page * 30 + 1))
-    return BeautifulSoup(f)
+    return self.__soupify(f)
 
-  def messages_incoming(self, num_messages=-1):
-    page = 0
+  def get_inbox(self, num_messages=-1):
     message_list = []
+    page = 0
     while (True):
       soup = self.__read_messages(1, page)
       messages = soup.find('ul', {'id': 'messages'}).findAll('li')
@@ -40,9 +46,9 @@ class okc_api:
 
   def __read_messages_readmsg(self, thread_id):
     f = self.__request_read(self.base_url + '/messages?readmsg=true&threadid=' + str(thread_id))
-    return BeautifulSoup(f)
+    return self.__soupify(f)
 
-  def readmsg(self, thread_id):
+  def read_message(self, thread_id):
     message_thread = []
     soup = self.__read_messages_readmsg(thread_id)
     soup = soup.find('ul', {'id': 'thread'})
@@ -57,12 +63,79 @@ class okc_api:
       message_thread.append({'username': user, 'message': msg, 'timestamp': date})
     return message_thread
 
-  def profile(self, username):
-    pass
+  def __read_profile(self, username):
+    f = self.__request_read(self.base_url + "/profile/" + str(username))
+    return self.__soupify(f)
+
+  def __strip(self, string):
+    return str(string).lstrip().rstrip()
+
+  def __find(self, soup, attribute, key, mapping = {}):
+    details = self.__strip(soup.find(attribute, {'id': key}).contents[0])
+    mapping['&mdash;'] = '-'
+    mapping['&ndash;'] = '-'
+    mapping['&rsquo;'] = '\''
+    for k in mapping:
+      details = details.replace(k, mapping[k])
+    return details
+
+  def __parse_my_details(self, soup, key, mapping = {}):
+    return self.__find(soup, 'span', key, mapping)
+
+  def __parse_details(self, soup, key, mapping = {}):
+    """given a profile_detail soup, returns the ajax_(key) using replace on the mappings"""
+    return self.__find(soup, 'dd', key, mapping)
+
+  def get_profile(self, username):
+    profile = {}
+    soup = self.__read_profile(username)
+    userinfo = soup.find('div', {'class': 'userinfo'})
+    if userinfo == None:
+      age = self.__parse_my_details(soup, 'ajax_age')
+      gender = self.__parse_my_details(soup, 'ajax_gender')
+      orientation = self.__parse_my_details(soup, 'ajax_orientation')
+      status = self.__parse_my_details(soup, 'ajax_status')
+      location = self.__parse_my_details(soup, 'ajax_location')
+    else:
+      info = userinfo.find('p', {'class': 'info'}).contents[0].split('/')
+      age = self.__strip(info[0])
+      gender = self.__strip(info[1])
+      orientation = self.__strip(info[2])
+      status = self.__strip(info[3])
+      location = self.__strip(info[4])
+    info = {'age': age, 'gender': gender, 'orientation': orientation, 'status': status, 'location': location}
+    profile['info'] = info
+
+    details = soup.find('div', {'id': 'skinny_wrap'})
+    profile_details = details.find('div', {'id': 'profile_details'})
+    online = str(profile_details.find('dl').find('dd').contents[0].lstrip().rstrip())
+    if online == "Online now!":
+      pass
+    else:
+      pass
+    ethnicity = self.__parse_details(profile_details, 'ajax_ethnicities')
+    height = self.__parse_details(profile_details, 'ajax_height', {'&prime;': '\'', '&Prime;': '\"'})
+    body_type = self.__parse_details(profile_details, 'ajax_bodytype')
+    diet = self.__parse_details(profile_details, 'ajax_diet')
+    smokes = self.__parse_details(profile_details, 'ajax_smoking')
+    drinks = self.__parse_details(profile_details, 'ajax_drinking')
+    drugs = self.__parse_details(profile_details, 'ajax_drugs')
+    religion = self.__parse_details(profile_details, 'ajax_religion')
+    education = self.__parse_details(profile_details, 'ajax_education')
+    job = self.__parse_details(profile_details, 'ajax_job')
+    income = self.__parse_details(profile_details, 'ajax_income')
+    children = self.__parse_details(profile_details, 'ajax_children')
+    pets = self.__parse_details(profile_details, 'ajax_pets')
+    languages = self.__parse_details(profile_details, 'ajax_languages')
+    profile_details = {'ethnicity': ethnicity, 'height': height, 'body_type': body_type, 'diet': diet, 'smokes': smokes,
+                       'drinks': drinks, 'drugs': drugs, 'religion': religion, 'education': education, 'job': job,
+                       'income': income, 'children': children, 'pets': pets, 'languages': languages}
+    profile['profile_details'] = profile_details
+    print profile
 
   def __read_compose(self):
     f = self.__request_read(self.base_url + '/messages?compose=1')
-    return BeautifulSoup(f)
+    return self.__soupify(f)
 
   def __get_auth_code(self):
     soup = self.__read_compose()
